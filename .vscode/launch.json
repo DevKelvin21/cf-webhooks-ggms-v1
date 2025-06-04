@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Functions Framework",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "functions_framework",
+            "console": "integratedTerminal",
+            "args": [
+                "--target",
+                "main",
+                "--debug",
+            ],
+            "cwd": "${workspaceFolder}/code_dir",
+        }
+    ]
+}

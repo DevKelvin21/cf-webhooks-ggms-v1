@@ -25,6 +25,8 @@ def main(request):
     except Exception as e:
         return (jsonify({"error": f"Failed to read Firestore collection: {str(e)}"}), 500)
     results = []
+    successes = []
+    failures = []
     for doc in docs:
         data = doc.to_dict()
         data['id'] = doc.id
@@ -41,7 +43,8 @@ def main(request):
         }
         api_key = result.get('apiKey')
         if not api_key:
-            return (jsonify({"error": f"Missing apiKey in Firestore document {site_name}"}), 400)
+            failures.append({"site_name": site_name, "reason": "Missing apiKey in Firestore document"})
+            continue
         headers = {
             "Content-Type": "application/json",
             "Sierra-ApiKey": api_key,
@@ -51,13 +54,12 @@ def main(request):
         try:
             response = requests.get(sierra_ep, headers=headers)
             if response.status_code != 200:
-                return (jsonify({
-                    "error": "Failed to fetch data from Sierra endpoint",
-                    "status_code": response.status_code
-                }), response.status_code)
+                failures.append({"site_name": site_name, "reason": f"Failed to fetch data from Sierra endpoint", "status_code": response.status_code})
+                continue
             response_data = response.json()
         except Exception as e:
-            return (jsonify({"error": f"Sierra API request failed: {str(e)}"}), 500)
+            failures.append({"site_name": site_name, "reason": f"Sierra API request failed: {str(e)}"})
+            continue
         subscriptions = response_data.get('data', [])
         subscription_id = result.get('id')
         if subscription_id:
@@ -69,20 +71,22 @@ def main(request):
             try:
                 response = requests.post(sierra_ep, json=body, headers=headers)
                 if response.status_code != 200:
-                    return (jsonify({
-                        "error": "Failed to create new subscription",
-                        "status_code": response.status_code
-                    }), response.status_code)
+                    failures.append({"site_name": site_name, "reason": f"Failed to create new subscription", "status_code": response.status_code})
+                    continue
                 result['new_subscription'] = True
                 result['subscriptionID'] = response.json().get('id')
                 db.collection(FIRESTORE_COLLECTION).document(result['id']).update({
                     'subscriptionID': result['subscriptionID']
                 })
             except Exception as e:
-                return (jsonify({"error": f"Failed to create/update subscription: {str(e)}"}), 500)
+                failures.append({"site_name": site_name, "reason": f"Failed to create/update subscription: {str(e)}"})
+                continue
+        successes.append(site_name)
 
     return (jsonify({
         "message": "Data retrieved successfully",
         "data": results,
-        "sierra_endpoint": sierra_ep
+        "sierra_endpoint": sierra_ep,
+        "successes": successes,
+        "failures": failures
     }), 200)

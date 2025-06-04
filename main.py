@@ -1,9 +1,8 @@
 import os
-from flask import Flask, request, jsonify
+from flask import jsonify
 from google.cloud import firestore
 import requests
-
-app = Flask(__name__)
+import functions_framework
 
 def get_firestore_client():
     """Create and return a Firestore client."""
@@ -15,14 +14,16 @@ CF_HANDLER_URL = os.getenv('CF_HANDLER_URL')
 if not FIRESTORE_COLLECTION or not CF_HANDLER_URL:
     raise RuntimeError('FIRESTORE_COLLECTION and CF_HANDLER_URL environment variables must be set.')
 
-@app.route('/read-collection', methods=['GET'])
-def read_collection():
-    """Read documents from a Firestore collection and manage Sierra subscriptions."""
+@functions_framework.http
+def main(request):
+    """HTTP Cloud Function to read Firestore collection and manage Sierra subscriptions."""
+    if request.method != 'GET':
+        return (jsonify({'error': 'Method not allowed'}), 405)
     db = get_firestore_client()
     try:
         docs = db.collection(FIRESTORE_COLLECTION).stream()
     except Exception as e:
-        return jsonify({"error": f"Failed to read Firestore collection: {str(e)}"}), 500
+        return (jsonify({"error": f"Failed to read Firestore collection: {str(e)}"}), 500)
     results = []
     for doc in docs:
         data = doc.to_dict()
@@ -45,13 +46,13 @@ def read_collection():
         try:
             response = requests.get(sierra_ep, headers=headers)
             if response.status_code != 200:
-                return jsonify({
+                return (jsonify({
                     "error": "Failed to fetch data from Sierra endpoint",
                     "status_code": response.status_code
-                }), response.status_code
+                }), response.status_code)
             response_data = response.json()
         except Exception as e:
-            return jsonify({"error": f"Sierra API request failed: {str(e)}"}), 500
+            return (jsonify({"error": f"Sierra API request failed: {str(e)}"}), 500)
         subscriptions = response_data.get('data', [])
         subscription_id = result.get('id')
         if subscription_id:
@@ -63,25 +64,20 @@ def read_collection():
             try:
                 response = requests.post(sierra_ep, json=body, headers=headers)
                 if response.status_code != 200:
-                    return jsonify({
+                    return (jsonify({
                         "error": "Failed to create new subscription",
                         "status_code": response.status_code
-                    }), response.status_code
+                    }), response.status_code)
                 result['new_subscription'] = True
                 result['subscriptionID'] = response.json().get('id')
                 db.collection(FIRESTORE_COLLECTION).document(result['id']).update({
                     'subscriptionID': result['subscriptionID']
                 })
             except Exception as e:
-                return jsonify({"error": f"Failed to create/update subscription: {str(e)}"}), 500
+                return (jsonify({"error": f"Failed to create/update subscription: {str(e)}"}), 500)
 
-    return jsonify({
+    return (jsonify({
         "message": "Data retrieved successfully",
         "data": results,
         "sierra_endpoint": sierra_ep
-    })
-
-# Entry point for Cloud Functions Gen2
-def main(request):
-    """Cloud Function entry point."""
-    return app(request)
+    }), 200)

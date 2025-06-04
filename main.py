@@ -39,11 +39,14 @@ def main(request):
             "url": f"{CF_HANDLER_URL}?site_name={site_name}",
             "exceptSystemName": "Automations"
         }
+        api_key = result.get('apiKey')
+        if not api_key:
+            return (jsonify({"error": f"Missing apiKey in Firestore document {site_name}"}), 400)
         headers = {
             "Content-Type": "application/json",
-            "Sierra-ApiKey": result.get('apiKey', ''),
+            "Sierra-ApiKey": api_key,
             "Sierra-OriginatingSystemName": "Automations Webhook",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         }
         try:
             response = requests.get(sierra_ep, headers=headers)

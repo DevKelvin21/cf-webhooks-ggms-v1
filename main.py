@@ -41,7 +41,9 @@ def main(request):
         }
         headers = {
             "Content-Type": "application/json",
-            "Sierra-ApiKey": result.get('apiKey', '')
+            "Sierra-ApiKey": result.get('apiKey', ''),
+            "Sierra-OriginatingSystemName": "Automations Webhook",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         }
         try:
             response = requests.get(sierra_ep, headers=headers)

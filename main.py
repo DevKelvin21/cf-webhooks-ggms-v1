@@ -27,6 +27,7 @@ def main(request):
     results = []
     successes = []
     failures = []
+    skipped = []
     for doc in docs:
         data = doc.to_dict()
         data['id'] = doc.id
@@ -37,6 +38,10 @@ def main(request):
         should_make_new_subscription = False
         site_name = result.get('id', '')
         client_name = result.get('Client', None)
+        subscription_id = result.get('id')
+        if not subscription_id:
+            skipped.append({"site_name": site_name, "Client": client_name, "reason": "skipped due to missing subscription ID"})
+            continue
         body = {
             "eventTypes": ["LeadCommunicationLogged"],
             "url": f"{CF_HANDLER_URL}?site_name={site_name}",
@@ -62,12 +67,10 @@ def main(request):
             failures.append({"site_name": site_name, "Client": client_name, "reason": f"Sierra API request failed: {str(e)}"})
             continue
         subscriptions = response_data.get('data', [])
-        subscription_id = result.get('id')
-        if subscription_id:
-            for subscription in subscriptions:
-                if subscription.get('id') == subscription_id and subscription.get('banned', False):
-                    should_make_new_subscription = True
-                    break
+        for subscription in subscriptions:
+            if subscription.get('id') == subscription_id and subscription.get('banned', False):
+                should_make_new_subscription = True
+                break
         if should_make_new_subscription:
             try:
                 response = requests.post(sierra_ep, json=body, headers=headers)

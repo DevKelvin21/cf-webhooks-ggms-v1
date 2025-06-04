@@ -90,5 +90,6 @@ def main(request):
     return (jsonify({
         "message": "Webhook processing complete",
         "successes": successes,
-        "failures": failures
+        "failures": failures,
+        "skipped": skipped
     }), 200)

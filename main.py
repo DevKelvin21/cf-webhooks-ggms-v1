@@ -36,6 +36,7 @@ def main(request):
     for result in results:
         should_make_new_subscription = False
         site_name = result.get('id', '')
+        client_name = result.get('Client', None)
         body = {
             "eventTypes": ["LeadCommunicationLogged"],
             "url": f"{CF_HANDLER_URL}?site_name={site_name}",
@@ -43,7 +44,7 @@ def main(request):
         }
         api_key = result.get('apiKey')
         if not api_key:
-            failures.append({"site_name": site_name, "reason": "Missing apiKey in Firestore document"})
+            failures.append({"site_name": site_name, "Client": client_name, "reason": "Missing apiKey in Firestore document"})
             continue
         headers = {
             "Content-Type": "application/json",
@@ -54,11 +55,11 @@ def main(request):
         try:
             response = requests.get(sierra_ep, headers=headers)
             if response.status_code != 200:
-                failures.append({"site_name": site_name, "reason": f"Failed to fetch data from Sierra endpoint", "status_code": response.status_code})
+                failures.append({"site_name": site_name, "Client": client_name, "reason": f"Failed to fetch data from Sierra endpoint", "status_code": response.status_code})
                 continue
             response_data = response.json()
         except Exception as e:
-            failures.append({"site_name": site_name, "reason": f"Sierra API request failed: {str(e)}"})
+            failures.append({"site_name": site_name, "Client": client_name, "reason": f"Sierra API request failed: {str(e)}"})
             continue
         subscriptions = response_data.get('data', [])
         subscription_id = result.get('id')
@@ -71,7 +72,7 @@ def main(request):
             try:
                 response = requests.post(sierra_ep, json=body, headers=headers)
                 if response.status_code != 200:
-                    failures.append({"site_name": site_name, "reason": f"Failed to create new subscription", "status_code": response.status_code})
+                    failures.append({"site_name": site_name, "Client": client_name, "reason": f"Failed to create new subscription", "status_code": response.status_code})
                     continue
                 result['new_subscription'] = True
                 result['subscriptionID'] = response.json().get('id')
@@ -79,14 +80,12 @@ def main(request):
                     'subscriptionID': result['subscriptionID']
                 })
             except Exception as e:
-                failures.append({"site_name": site_name, "reason": f"Failed to create/update subscription: {str(e)}"})
+                failures.append({"site_name": site_name, "Client": client_name, "reason": f"Failed to create/update subscription: {str(e)}"})
                 continue
-        successes.append(site_name)
+        successes.append({"site_name": site_name, "Client": client_name})
 
     return (jsonify({
-        "message": "Data retrieved successfully",
-        "data": results,
-        "sierra_endpoint": sierra_ep,
+        "message": "Webhook processing complete",
         "successes": successes,
         "failures": failures
     }), 200)

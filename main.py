@@ -74,15 +74,15 @@ def main(request):
                 if response.status_code != 200:
                     failures.append({"site_name": site_name, "Client": client_name, "reason": f"Failed to create new subscription", "status_code": response.status_code})
                     continue
-                result['new_subscription'] = True
                 result['subscriptionID'] = response.json().get('id')
                 db.collection(FIRESTORE_COLLECTION).document(result['id']).update({
-                    'subscriptionID': result['subscriptionID']
+                    'subscriptionID': result['subscriptionID'],
+                    'new_subscription': True
                 })
+                successes.append({"site_name": site_name, "Client": client_name})
             except Exception as e:
                 failures.append({"site_name": site_name, "Client": client_name, "reason": f"Failed to create/update subscription: {str(e)}"})
                 continue
-        successes.append({"site_name": site_name, "Client": client_name})
 
     return (jsonify({
         "message": "Webhook processing complete",

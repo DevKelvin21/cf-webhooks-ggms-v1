@@ -45,7 +45,7 @@ def main(request):
         should_make_new_subscription = False
         site_name = result.get('id', '')
         client_name = result.get('Client', None)
-        subscription_id = result.get('id')
+        subscription_id = result.get('subscriptionID')
         users = result.get('availableUsers', {})
         allowed_user_ids = result.get('allowedAdminUserIds', [])
         if not users:
@@ -86,7 +86,7 @@ def main(request):
             continue
         subscriptions = response_data.get('data', [])
         for subscription in subscriptions:
-            if subscription.get('id') == result.get('subscriptionID') and subscription.get('banned', False):
+            if subscription.get('id') == subscription_id and subscription.get('banned', False):
                 should_make_new_subscription = True
                 break
         # Create new subscription if needed
@@ -96,9 +96,10 @@ def main(request):
                 if response.status_code != 200:
                     failures.append({"site_name": site_name, "Client": client_name, "reason": f"Failed to create new subscription", "status_code": response.status_code})
                     continue
-                result['subscriptionID'] = response.json().get('id')
+                response_data = response.json().get('data', {})
+                subscription_id = response_data.get('id')
                 db.collection(FIRESTORE_COLLECTION).document(result['id']).update({
-                    'subscriptionID': result['subscriptionID'],
+                    'subscriptionID': subscription_id,
                     'new_subscription': True
                 })
                 successes.append({"site_name": site_name, "Client": client_name})
@@ -118,7 +119,7 @@ def main(request):
                     continue
                 users_in_sierra = user_data.get('records', [])
                 for user_record in users_in_sierra:
-                    user_id = user_record.get('id')
+                    user_id = f"{user_record.get('id')}"
                     record_name = user_record.get('name')
                     if user_id and user_id not in allowed_user_ids and record_name == user_name:
                         db.collection(FIRESTORE_COLLECTION).document(result['id']).update({

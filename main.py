@@ -123,7 +123,7 @@ def main(request):
                     if user_id and user_id not in allowed_user_ids and record_name == user_name:
                         db.collection(FIRESTORE_COLLECTION).document(result['id']).update({
                             'allowedAdminUserIds': firestore.ArrayUnion([user_id]),
-                            'availableUsers': firestore.ArrayUnion({user_id: user_name})
+                            f"availableUsers.{user_id}": user_name
                         })
                         # Not adding to successes here, only for subscriptionID update
             except Exception as e:

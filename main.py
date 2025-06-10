@@ -119,7 +119,7 @@ def main(request):
                     continue
                 users_in_sierra = user_data.get('records', [])
                 for user_record in users_in_sierra:
-                    user_id = user_record.get('id')
+                    user_id = f"{user_record.get('id')}"
                     record_name = user_record.get('name')
                     if user_id and user_id not in allowed_user_ids and record_name == user_name:
                         db.collection(FIRESTORE_COLLECTION).document(result['id']).update({

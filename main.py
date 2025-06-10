@@ -86,7 +86,7 @@ def main(request):
             continue
         subscriptions = response_data.get('data', [])
         for subscription in subscriptions:
-            if subscription.get('id') == subscription_id and subscription.get('banned', False):
+            if subscription.get('id') == result.get('subscriptionID') and subscription.get('banned', False):
                 should_make_new_subscription = True
                 break
         # Create new subscription if needed

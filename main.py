@@ -45,7 +45,7 @@ def main(request):
         should_make_new_subscription = False
         site_name = result.get('id', '')
         client_name = result.get('Client', None)
-        subscription_id = result.get('id')
+        subscription_id = result.get('subscriptionID')
         users = result.get('availableUsers', {})
         allowed_user_ids = result.get('allowedAdminUserIds', [])
         if not users:
@@ -86,7 +86,7 @@ def main(request):
             continue
         subscriptions = response_data.get('data', [])
         for subscription in subscriptions:
-            if subscription.get('id') == result.get('subscriptionID') and subscription.get('banned', False):
+            if subscription.get('id') == subscription_id and subscription.get('banned', False):
                 should_make_new_subscription = True
                 break
         # Create new subscription if needed
@@ -97,9 +97,9 @@ def main(request):
                     failures.append({"site_name": site_name, "Client": client_name, "reason": f"Failed to create new subscription", "status_code": response.status_code})
                     continue
                 response_data = response.json().get('data', {})
-                result['subscriptionID'] = response_data.get('id')
+                subscription_id = response_data.get('id')
                 db.collection(FIRESTORE_COLLECTION).document(result['id']).update({
-                    'subscriptionID': result['subscriptionID'],
+                    'subscriptionID': subscription_id,
                     'new_subscription': True
                 })
                 successes.append({"site_name": site_name, "Client": client_name})

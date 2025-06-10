@@ -96,7 +96,8 @@ def main(request):
                 if response.status_code != 200:
                     failures.append({"site_name": site_name, "Client": client_name, "reason": f"Failed to create new subscription", "status_code": response.status_code})
                     continue
-                result['subscriptionID'] = response.json().get('id')
+                response_data = response.json().get('data', {})
+                result['subscriptionID'] = response_data.get('id')
                 db.collection(FIRESTORE_COLLECTION).document(result['id']).update({
                     'subscriptionID': result['subscriptionID'],
                     'new_subscription': True
